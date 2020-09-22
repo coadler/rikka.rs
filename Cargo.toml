@@ -7,3 +7,22 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+jemallocator = "0.3"
+strum = "0.19"
+strum_macros = "0.19"
+cached = "0.18"
+tokio = { version = "0.2", features = ["macros"] }
+async-trait = "0.1"
+thiserror = "1.0"
+anyhow = "1.0"
+twilight = { branch = "trunk", git = "https://github.com/twilight-rs/twilight.git" }
+twilight-cache-inmemory = { branch = "trunk", git = "https://github.com/twilight-rs/twilight.git" }
+twilight-command-parser = { branch = "trunk", git = "https://github.com/twilight-rs/twilight.git" }
+twilight-embed-builder = { branch = "trunk", git = "https://github.com/twilight-rs/twilight.git" }
+twilight-gateway = { branch = "trunk", git = "https://github.com/twilight-rs/twilight.git" }
+twilight-http = { branch = "trunk", git = "https://github.com/twilight-rs/twilight", default-features = false, features = ["rustls", "simd-json"] }
+twilight-model = { branch = "trunk", git = "https://github.com/twilight-rs/twilight.git" }
+reqwest = "0.10"
+
+[profile.release]
+lto = true
