@@ -63,7 +63,7 @@ impl Rikka {
         })
     }
 
-    pub async fn register_command<T: Command + 'static>(&mut self, cmd: T) {
+    pub fn register_command<T: Command + 'static>(&mut self, cmd: T) {
         let cfg = self.parser.config_mut();
 
         for help in cmd.help(None).iter() {

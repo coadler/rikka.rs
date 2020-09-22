@@ -1,4 +1,3 @@
-// use rikka_rs::commands::general::*;
 use std::env;
 use std::error::Error;
 
@@ -13,10 +12,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let mut r = Rikka::new(token).await?;
 
     r.register_prefix("rt.");
-    r.register_command(commands::general::Say {}).await;
-    r.register_command(commands::general::Ping {}).await;
-    r.register_command(commands::general::Log {}).await;
-    r.register_command(commands::help::Help {}).await;
+    r.register_command(commands::general::Say {});
+    r.register_command(commands::general::Ping {});
+    r.register_command(commands::general::Log {});
+    r.register_command(commands::help::Help {});
 
     let r = leak(r);
     println!("start");
