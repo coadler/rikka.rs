@@ -10,6 +10,7 @@ use twilight_model::channel::embed::Embed;
 #[derive(EnumIter, IntoStaticStr, AsRefStr, PartialEq, PartialOrd)]
 pub enum HelpSection {
     General,
+    Fun,
     Info,
     Moderation,
     Owner,
@@ -66,7 +67,7 @@ pub fn generate_help<'a>(bot: &Rikka) -> Result<Embed> {
         }
 
         if buf.len() > 0 {
-            embed = embed.field(EmbedFieldBuilder::new(sect.as_ref(), &buf)?);
+            embed = embed.field(EmbedFieldBuilder::new(sect.as_ref(), &buf)?.inline());
             buf.clear();
         }
     }

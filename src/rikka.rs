@@ -2,13 +2,13 @@ use anyhow::Result;
 use async_trait::async_trait;
 use tokio::stream::StreamExt;
 
-use twilight_cache_inmemory::InMemoryCache;
+use twilight_cache_inmemory::{EventType, InMemoryCache};
 use twilight_command_parser::{CommandParserConfig, Parser};
-use twilight_gateway::{
-    cluster::{Cluster, ShardScheme},
-    Event,
-};
+use twilight_gateway::cluster::{Cluster, ShardScheme};
+use twilight_gateway::Event;
+use twilight_http::request::channel::message::allowed_mentions::AllowedMentionsBuilder;
 use twilight_http::Client as HttpClient;
+use twilight_model::gateway::payload::request_guild_members::RequestGuildMembersBuilder;
 use twilight_model::{channel::Message, gateway::Intents};
 
 use crate::error::{CommandError, CommandResult};
@@ -45,12 +45,13 @@ impl Rikka {
     pub async fn new(token: String) -> Result<Self> {
         let cluster = Cluster::builder(&token)
             .shard_scheme(ShardScheme::Auto)
-            // Use intents to only receive guild message events.
-            .intents(Intents::GUILD_MESSAGES)
+            .intents(Intents::all() - Intents::GUILD_PRESENCES - Intents::GUILD_VOICE_STATES)
             .build()
             .await?;
 
-        let cache = InMemoryCache::builder().build();
+        let cache = InMemoryCache::builder()
+            .event_types(EventType::all() - EventType::PRESENCE_UPDATE)
+            .build();
 
         Ok(Rikka {
             cmds: Vec::default(),
@@ -68,6 +69,10 @@ impl Rikka {
 
         for help in cmd.help(None).iter() {
             cfg.add_command(help.name, false);
+            for alias in help.aliases {
+                println!("{}", *alias);
+                cfg.add_command(*alias, false);
+            }
         }
 
         self.cmds.push(leak(cmd));
@@ -87,9 +92,24 @@ impl Rikka {
 
         let mut events = self.cluster.events();
 
-        while let Some((_, event)) = events.next().await {
+        while let Some((shard, event)) = events.next().await {
             self.cache.update(&event);
             let event = Box::new(event);
+
+            if event.kind().name().is_none() {
+                dbg!(&event);
+            }
+
+            if let Event::GuildCreate(guild) = *event.clone() {
+                tokio::spawn(async move {
+                    let shard = self.cluster.shard(shard).unwrap();
+                    shard
+                        .command(&RequestGuildMembersBuilder::new(guild.id).query("", None))
+                        .await
+                        .map_err(|e| println!("request guild members: {}", e))
+                        .ok();
+                });
+            };
 
             if let Event::MessageCreate(msg) = *event.clone() {
                 for cmd in self.cmds.iter() {
@@ -109,7 +129,17 @@ impl Rikka {
                             }
                             Ok(None) => {}
                             Err(CommandError::NoMatch) => {}
-                            Err(err) => println!("command errored: {}", err),
+                            Err(err) => {
+                                println!("command errored: {:?}", err);
+                                self.http
+                                    .create_message(msg.channel_id)
+                                    .allowed_mentions()
+                                    .build()
+                                    .content(format!("```An error occured: {:?}```", err))
+                                    .unwrap()
+                                    .await
+                                    .ok();
+                            }
                         }
                     });
                 }

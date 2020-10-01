@@ -2,6 +2,7 @@ use crate::error::CommandResult;
 use crate::help::generate_help;
 use crate::parse::matches_command;
 use crate::rikka::Rikka;
+use anyhow::Context;
 use async_trait::async_trait;
 use twilight_model::channel::Message;
 
@@ -26,8 +27,10 @@ impl Command for Help {
 
         bot.http
             .create_message(msg.channel_id)
-            .embed(embed)?
-            .await?;
+            .embed(embed)
+            .context("build embed")?
+            .await
+            .context("send help message")?;
         Ok(None)
     }
 }

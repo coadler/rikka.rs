@@ -1,3 +1,5 @@
+#![feature(poll_map)]
+
 pub mod commands;
 mod error;
 mod help;

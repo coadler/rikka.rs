@@ -1,7 +1,9 @@
 use crate::error::CommandResult;
 use crate::parse::matches_command;
 use crate::rikka::Rikka;
+use anyhow::Context;
 use async_trait::async_trait;
+use chrono::Utc;
 use twilight_model::channel::Message;
 
 use crate::help::CommandHelp;
@@ -14,15 +16,35 @@ const PING_ALIAS: &[&'static str] = &["ping"];
 #[async_trait]
 impl Command for Ping {
     fn help(&self, _: Option<&Message>) -> Vec<CommandHelp> {
-        let mut cmd = CommandHelp::default();
-        cmd.name = "ping";
-        vec![cmd]
+        vec![CommandHelp {
+            name: "ping",
+            ..Default::default()
+        }]
     }
 
     async fn receive(&self, bot: &Rikka, msg: &Message) -> CommandResult {
         matches_command(bot, msg, PING_ALIAS)?;
 
-        Ok(Some("Pong!".into()))
+        let start = Utc::now();
+        let msg = bot
+            .http
+            .create_message(msg.channel_id)
+            .content("Pong!")
+            .context("add content")?
+            .await
+            .context("send message")?;
+
+        bot.http
+            .update_message(msg.channel_id, msg.id)
+            .content(format!(
+                "Pong! - `{}ms`",
+                Utc::now().signed_duration_since(start).num_milliseconds()
+            ))
+            .context("set content")?
+            .await
+            .context("update message")?;
+
+        Ok(None)
     }
 }
 
@@ -44,14 +66,5 @@ impl Command for Say {
         dbg!(msg);
 
         Ok(Some(format!("you said \"{}\"", args.as_str())))
-    }
-}
-
-pub struct Log;
-
-#[async_trait]
-impl Command for Log {
-    async fn receive(&self, _: &Rikka, _: &Message) -> CommandResult {
-        Ok(None)
     }
 }
