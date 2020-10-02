@@ -55,4 +55,4 @@ rs-humanize = "1.2"
 played-rs = { path = "/home/colin/Projects/coadler/played-rs" }
 
 [profile.release]
-# lto = true
+lto = true
