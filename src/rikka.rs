@@ -6,7 +6,6 @@ use twilight_cache_inmemory::{EventType, InMemoryCache};
 use twilight_command_parser::{CommandParserConfig, Parser};
 use twilight_gateway::cluster::{Cluster, ShardScheme};
 use twilight_gateway::Event;
-use twilight_http::request::channel::message::allowed_mentions::AllowedMentionsBuilder;
 use twilight_http::Client as HttpClient;
 use twilight_model::gateway::payload::request_guild_members::RequestGuildMembersBuilder;
 use twilight_model::{channel::Message, gateway::Intents};
@@ -43,11 +42,13 @@ pub struct Rikka {
 
 impl Rikka {
     pub async fn new(token: String) -> Result<Self> {
-        let cluster = Cluster::builder(&token)
-            .shard_scheme(ShardScheme::Auto)
-            .intents(Intents::all() - Intents::GUILD_PRESENCES - Intents::GUILD_VOICE_STATES)
-            .build()
-            .await?;
+        let cluster = Cluster::builder(
+            &token,
+            Intents::all() - Intents::GUILD_PRESENCES - Intents::GUILD_VOICE_STATES,
+        )
+        .shard_scheme(ShardScheme::Auto)
+        .build()
+        .await?;
 
         let cache = InMemoryCache::builder()
             .event_types(EventType::all() - EventType::PRESENCE_UPDATE)
