@@ -15,6 +15,10 @@ const PING_ALIAS: &[&'static str] = &["ping"];
 
 #[async_trait]
 impl Command for Ping {
+    fn name(&self) -> &'static str {
+        "ping"
+    }
+
     fn help(&self, _: Option<&Message>) -> Vec<CommandHelp> {
         vec![CommandHelp {
             name: "ping",
@@ -54,6 +58,10 @@ const SAY_ALIAS: &[&'static str] = &["say"];
 
 #[async_trait]
 impl Command for Say {
+    fn name(&self) -> &'static str {
+        "say"
+    }
+
     fn help(&self, _: Option<&Message>) -> Vec<CommandHelp> {
         let mut cmd = CommandHelp::default();
         cmd.name = "say";

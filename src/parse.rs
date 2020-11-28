@@ -8,6 +8,10 @@ pub fn matches_command<'a>(
     msg: &'a Message,
     cmds: &[&'static str],
 ) -> Result<Arguments<'a>, CommandError> {
+    if msg.author.bot {
+        return Err(CommandError::NoMatch);
+    }
+
     let found = bot
         .parser
         .parse(&msg.content)

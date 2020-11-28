@@ -15,6 +15,8 @@ use crate::help::CommandHelp;
 
 #[async_trait]
 pub trait Command: Send + Sync {
+    fn name(&self) -> &'static str;
+
     fn help(&self, _: Option<&Message>) -> Vec<CommandHelp> {
         Vec::default()
     }
@@ -117,7 +119,9 @@ impl Rikka {
                     let msg = (**msg).clone();
 
                     tokio::spawn(async move {
+                        println!("send to cmd: {}", cmd.name());
                         let res = cmd.receive(self, &msg).await;
+                        println!("end cmd: {}", cmd.name());
                         match res {
                             Ok(Some(res)) => {
                                 self.http

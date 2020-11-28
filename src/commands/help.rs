@@ -15,6 +15,10 @@ const HELP_ALIAS: &[&'static str] = &["help"];
 
 #[async_trait]
 impl Command for Help {
+    fn name(&self) -> &'static str {
+        "help"
+    }
+
     fn help(&self, _: Option<&Message>) -> Vec<CommandHelp> {
         let mut cmd = CommandHelp::default();
         cmd.name = "help";

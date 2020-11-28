@@ -2,3 +2,4 @@
 .env
 run.sh
 run-prod.sh
+logs.txt

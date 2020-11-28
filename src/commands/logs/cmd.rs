@@ -4,22 +4,18 @@ use anyhow::Error;
 use anyhow::Result;
 use async_trait::async_trait;
 use byteorder::{ByteOrder, LittleEndian};
-use chrono::{DateTime, TimeZone, Utc};
+use chrono::Utc;
 use foundationdb::Database;
 use foundationdb::{FdbResult, TransactOption};
 use futures::FutureExt;
-use rusoto_core::{
-    credential::{AwsCredentials, DefaultCredentialsProvider, ProvideAwsCredentials},
-    ByteStream,
-};
+use rusoto_core::ByteStream;
 use rusoto_s3::{PutObjectRequest, S3Client, S3};
 use rusoto_signature::region::Region;
 use std::sync::Arc;
 use twilight_cache_inmemory::model::CachedGuild;
 use twilight_command_parser::Arguments;
 use twilight_embed_builder::{
-    image_source::ImageSource, EmbedAuthorBuilder, EmbedBuilder, EmbedFieldBuilder,
-    EmbedFooterBuilder,
+    image_source::ImageSource, EmbedBuilder, EmbedFieldBuilder, EmbedFooterBuilder,
 };
 use twilight_mention::ParseMention;
 use twilight_model::channel::{GuildChannel, Message};
@@ -31,6 +27,7 @@ use twilight_model::id::{AttachmentId, ChannelId, GuildId, MessageId};
 use twilight_model::user::User;
 
 use super::adapter::Adapter;
+use super::encrypt::img_hash_secret;
 use crate::error::{CommandError, CommandResult};
 use crate::help::{CommandHelp, HelpSection};
 use crate::parse::matches_command;
@@ -39,9 +36,6 @@ use crate::rikka::Rikka;
 
 pub struct Logs {
     fdb: Database,
-
-    s3_creds: AwsCredentials,
-    s3_region: Region,
     s3: S3Client,
 
     pub nonce: String,
@@ -52,20 +46,13 @@ impl Logs {
         let nonce = std::env::var("LOG_HASH_NONCE")?;
 
         let fdb = foundationdb::Database::default().expect("open fdb");
-        let s3_creds = DefaultCredentialsProvider::new()?.credentials().await?;
         let s3_region = Region::Custom {
             name: "b2-usw".into(),
             endpoint: "s3.us-west-000.backblazeb2.com".into(),
         };
         let s3 = S3Client::new(s3_region.clone());
 
-        Ok(Logs {
-            fdb,
-            s3_creds,
-            s3_region,
-            s3,
-            nonce,
-        })
+        Ok(Logs { fdb, s3, nonce })
     }
 }
 
@@ -73,6 +60,10 @@ const LOGS_ALIAS: &[&'static str] = &["logs", "log"];
 
 #[async_trait]
 impl Command for Logs {
+    fn name(&self) -> &'static str {
+        "logs"
+    }
+
     fn help(&self, _: Option<&Message>) -> Vec<CommandHelp> {
         vec![CommandHelp {
             name: "log",
@@ -153,11 +144,12 @@ impl Logs {
         Ok(Some(format!("Enabled message logs in {}", ch.name())))
     }
 
-    async fn store_message(&self, bot: &Rikka, msg: &Message) -> Result<()> {
-        if self
-            .messages_enabled(&msg.guild_id.unwrap_or_default())
-            .await?
-            .is_none()
+    async fn store_message(&self, _: &Rikka, msg: &Message) -> Result<()> {
+        if msg.author.bot
+            || self
+                .messages_enabled(&msg.guild_id.unwrap_or_default())
+                .await?
+                .is_none()
         {
             return Ok(());
         }
@@ -221,7 +213,7 @@ impl Logs {
                 ),
             )?)
             .field(EmbedFieldBuilder::new(
-                "User",
+                "Channel",
                 format!("<#{}> {}", chan.id(), chan.id()),
             )?)
             .field(EmbedFieldBuilder::new("Old content", &msg.content)?)
@@ -268,7 +260,7 @@ impl Logs {
                 ),
             )?)
             .field(EmbedFieldBuilder::new(
-                "User",
+                "Channel",
                 format!("<#{}> {}", chan.id(), chan.id()),
             )?);
 
@@ -421,17 +413,11 @@ fn fmt_attachment_key(mid: &MessageId, aid: &AttachmentId) -> String {
 }
 
 fn fmt_attachment_url(mid: &MessageId, aid: &AttachmentId) -> String {
-    format!("https://files.rikka.xyz/{}", fmt_attachment_key(mid, aid))
-}
-
-use std::convert::TryInto;
-
-fn id_to_timestamp(id: u64) -> DateTime<Utc> {
-    let ms = ((id >> 22) + 1420070400000) as i64;
-    let s: i64 = ms / 1000;
-    let ns: u32 = ((ms % 1000) * 1e6 as i64).try_into().unwrap();
-
-    Utc.timestamp(s, ns)
+    format!(
+        "https://files.rikka.xyz/{}?key={}",
+        fmt_attachment_key(&mid, &aid),
+        img_hash_secret(&mid, &aid)
+    )
 }
 
 fn fmt_guild_icon(g: &CachedGuild) -> String {

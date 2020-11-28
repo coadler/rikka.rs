@@ -7,11 +7,7 @@ use async_trait::async_trait;
 use chrono::Duration;
 use chrono::Utc;
 use rs_humanize::time;
-use std::sync::Arc;
-use twilight_embed_builder::{
-    image_source::ImageSource, EmbedAuthorBuilder, EmbedBuilder, EmbedFieldBuilder,
-    EmbedFooterBuilder,
-};
+use twilight_embed_builder::{image_source::ImageSource, EmbedBuilder, EmbedFieldBuilder};
 use twilight_mention::ParseMention;
 use twilight_model::channel::embed::Embed;
 use twilight_model::channel::Message;
@@ -30,6 +26,10 @@ const PLAYED_ALIAS: &[&'static str] = &["played"];
 
 #[async_trait]
 impl Command for Played {
+    fn name(&self) -> &'static str {
+        "played"
+    }
+
     fn help(&self, _: Option<&Message>) -> Vec<CommandHelp> {
         vec![CommandHelp {
             name: "played",
